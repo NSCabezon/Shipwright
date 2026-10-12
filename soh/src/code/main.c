@@ -73,6 +73,17 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+#ifdef __VISIONOS__
+extern void SDL_SetMainReady(void);
+
+// Entry point for the visionOS host app, which owns main() and runs this on a
+// dedicated game thread. There is no SDL2main, so mark SDL as ready first.
+int SoHEngine_Main(int argc, char** argv) {
+    SDL_SetMainReady();
+    return SDL_main(argc, argv);
+}
+#endif
+
 void Main(void* arg) {
     IrqMgrClient irqClient;
     OSMesgQueue irqMgrMsgQ;

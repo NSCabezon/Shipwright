@@ -6,6 +6,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         set(CMAKE_OSX_SYSROOT "iphonesimulator" CACHE STRING "" FORCE)
         set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
     endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    # Native CMake visionOS support: sysroot, architecture and deployment
+    # target come from the command line (scripts/configure-visionos.sh).
+    set(CMAKE_SYSTEM_VERSION "${CMAKE_OSX_DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
 else()
     set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
 endif()
@@ -15,6 +19,11 @@ set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 
 project(Ship VERSION 9.2.3 LANGUAGES C CXX)
+if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    # SDL's Objective-C sources (see libultraship/cmake/dependencies/visionos.cmake)
+    # need OBJC enabled in the root project for the Ninja generator.
+    enable_language(OBJC)
+endif()
 include(CMake/soh-cvars.cmake)
 include(CMake/lus-cvars.cmake)
 set(SPDLOG_LEVEL_TRACE 0)
@@ -191,7 +200,7 @@ set(GBI_UCODE F3DEX_GBI_2)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 
 # Dependencies that are not provided by the iOS SDK.
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
     include(CMake/ios.cmake)
 endif()
 
@@ -211,7 +220,7 @@ target_compile_options(libultraship PRIVATE "${WARNING_OVERRIDE}")
 target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
 add_subdirectory(ZAPDTR/ZAPD ${CMAKE_BINARY_DIR}/ZAPD)
 add_subdirectory(OTRExporter)
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
     target_link_libraries(OTRExporter PUBLIC
         tinyxml2::tinyxml2
         libzip::zip

@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(CMAKE_SYSTEM_VERSION "${DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    set(CMAKE_SYSTEM_VERSION "${CMAKE_OSX_DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
 else()
     set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
 endif()
@@ -10,7 +12,7 @@ project(soh LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 
-if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|visionOS")
     enable_language(OBJCXX)
     set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -fobjc-arc")
     set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
@@ -146,6 +148,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     list(FILTER soh__ EXCLUDE REGEX "^soh/SohGui/SohMenuNetwork\\.cpp$")
     list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadTouchControls.mm ${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadModImport.mm)
     set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadModImport.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    # No UIKit touch overlay on visionOS: a no-op stub provides its C API.
+    list(FILTER soh__ EXCLUDE REGEX "^soh/Network/")
+    list(FILTER soh__ EXCLUDE REGEX "^soh/SohGui/SohMenuNetwork\\.cpp$")
+    list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/visionos/HarkinianPadTouchControlsStub.c ${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadModImport.mm)
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadModImport.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 
 # Create source groups that match the real file directory paths
@@ -166,7 +174,7 @@ endif()
 # handle speechsynthesizer removals
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/Darwin")
-elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|visionOS")
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/SAPI")
 else()
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/(Darwin|SAPI)")
@@ -239,7 +247,12 @@ set(ALL_FILES
 ################################################################################
 # Target
 ################################################################################
-add_executable(${PROJECT_NAME} ${ALL_FILES})
+if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    # The visionOS app (visionos/SoHVision.xcodeproj) links the engine as a static library.
+    add_library(${PROJECT_NAME} STATIC ${ALL_FILES})
+else()
+    add_executable(${PROJECT_NAME} ${ALL_FILES})
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")
@@ -330,7 +343,7 @@ FetchContent_MakeAvailable(dr_libs)
 find_package(SDL2)
 set(SDL2-INCLUDE ${SDL2_INCLUDE_DIRS})
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(NOT CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
     find_package(SDL2_net)
 
     if(NOT SDL2_net_FOUND)
@@ -403,12 +416,14 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
             NOMINMAX
         )
     endif()
-elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+elseif (CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
+    # visionOS keeps the iOS code paths (__IOS__) and adds __VISIONOS__ where it differs.
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         "$<$<CONFIG:Debug>:_DEBUG>"
         "$<$<CONFIG:Release>:NDEBUG>"
         "SOH_DISABLE_NETWORKING;"
         "__IOS__;"
+        "$<$<STREQUAL:${CMAKE_SYSTEM_NAME},visionOS>:__VISIONOS__>"
         "F3DEX_GBI_2;"
         "_CONSOLE;"
         "_CRT_SECURE_NO_WARNINGS;"
@@ -524,7 +539,7 @@ if(MSVC)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
-    if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+    if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|visionOS")
         target_compile_options(${PROJECT_NAME} PRIVATE
             -Wall -Wextra -Wno-error
             -Wformat-security
@@ -630,7 +645,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
             -pthread
                 #-fsanitize=address
         )
-        if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        if(NOT CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
             target_link_options(${PROJECT_NAME} PRIVATE -Wl,-export-dynamic)
         endif()
     endif()
@@ -760,6 +775,22 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
     target_include_directories(${PROJECT_NAME} PRIVATE
         ${DEVKITPRO}/portlibs/wiiu/include/
     )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    # No SDL2main: the host app owns main() (see SoHEngine_Main in main.c).
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    set(ADDITIONAL_LIBRARY_DEPENDENCIES
+        "libultraship;"
+        "ZAPDLib;"
+        SDL2::SDL2-static
+        Ogg::ogg
+        Vorbis::vorbis
+        Vorbis::vorbisenc
+        Vorbis::vorbisfile
+        Opus::opus
+        OpusFile::opusfile
+        Threads::Threads
+    )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
@@ -800,7 +831,7 @@ else()
     )
 endif()
 
-if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|NintendoSwitch|CafeOS")
+if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|visionOS|NintendoSwitch|CafeOS")
 INSTALL(TARGETS soh DESTINATION . COMPONENT ship)
 endif()
 
@@ -810,7 +841,7 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/soh/soh.o2r DESTINATION . COMPONENT ship)
 endif()
 
 find_program(CURL NAMES curl DOC "Path to the curl program.  Used to download files.")
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
     set(CONTROLLER_DB_COMMIT "03d390c37b1342fcb7d8d294cd9621ab9d640bb3")
     set(CONTROLLER_DB_SHA256 "eb002773dc8a16aa96f9ee2609798e231a9deb60c45e21fbdd4e221c9e8b7d77")
     set(CONTROLLER_DB_URL
@@ -826,7 +857,7 @@ execute_process(
         -o ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt
     RESULT_VARIABLE CONTROLLER_DB_RESULT
 )
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
     if(NOT CONTROLLER_DB_RESULT EQUAL 0)
         message(FATAL_ERROR "Failed to download pinned controller mappings")
     endif()
@@ -841,11 +872,11 @@ configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/macosx/Info.plist.in ${CMAKE_BINARY_
 INSTALL(TARGETS soh DESTINATION ../MacOS COMPONENT ship)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION ../MacOS COMPONENT ship)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/soh/soh.o2r DESTINATION ../Resources COMPONENT ship)
-elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "iOS|NintendoSwitch|CafeOS")
+elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "iOS|visionOS|NintendoSwitch|CafeOS")
 INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION . COMPONENT ship)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework UniformTypeIdentifiers")
 endif()
 
