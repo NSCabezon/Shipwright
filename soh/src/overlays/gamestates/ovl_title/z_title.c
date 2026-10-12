@@ -55,6 +55,8 @@ void Title_SetupView(TitleContext* this, f32 x, f32 y, f32 z) {
 
     func_800AA460(view, 30.0f, 10.0f, 12800.0f);
     func_800AA358(view, &eye, &lookAt, &up);
+    // Stereo: the boot logos sit at the depth of their 2D text, like the HUD.
+    View_SetStereoInterface(view);
     func_800AAA50(view, 0xF);
 }
 

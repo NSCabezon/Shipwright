@@ -25,6 +25,8 @@ void SkyboxDraw_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyb
     gSPSegment(POLY_OPA_DISP++, 0x8, skyboxCtx->staticSegments[1]);
     gSPSegment(POLY_OPA_DISP++, 0x9, skyboxCtx->palettes);*/
 
+    // Stereo: the skybox is a small box around the camera; draw it at infinity.
+    gSPStereoMode(POLY_OPA_DISP++, G_STEREO_SKY_BEGIN);
     gDPSetPrimColor(POLY_OPA_DISP++, 0x00, 0x00, 0, 0, 0, blend);
     gSPTexture(POLY_OPA_DISP++, 0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON);
 
@@ -92,6 +94,7 @@ void SkyboxDraw_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyb
     }
 
     gDPPipeSync(POLY_OPA_DISP++);
+    gSPStereoMode(POLY_OPA_DISP++, G_STEREO_SKY_END);
     // gsSPShaderTest2(POLY_OPA_DISP++);
 
     FrameInterpolation_RecordCloseChild();

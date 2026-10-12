@@ -147,6 +147,8 @@ void FileChoose_SetView(FileChooseContext* this, f32 eyeX, f32 eyeY, f32 eyeZ) {
     up.y = 1.0f;
 
     func_800AA358(&this->view, &eye, &lookAt, &up);
+    // Stereo: the file select is a flat menu; keep it at HUD depth.
+    View_SetStereoInterface(&this->view);
     func_800AAA50(&this->view, 0x7F);
 }
 

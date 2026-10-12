@@ -1,6 +1,14 @@
 #pragma once
 
 #define BTN_CUSTOM_MODIFIER1 0x0040
+
+// Default of CVAR_SETTING("InterpolationFPS") when the user never set it: on visionOS
+// 45 = half the 90 Hz panel, paced on the display clock (gfx_host.h HP_DisplayTick).
+#ifdef __VISIONOS__
+#define SOH_DEFAULT_INTERPOLATION_FPS 45
+#else
+#define SOH_DEFAULT_INTERPOLATION_FPS 20
+#endif
 #define BTN_CUSTOM_MODIFIER2 0x0080
 
 #define BTN_CUSTOM_OCARINA_NOTE_D4 ((CONTROLLERBUTTONS_T)0x00010000)

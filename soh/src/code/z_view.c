@@ -288,6 +288,24 @@ static float sqr(float a) {
     return a * a;
 }
 
+// Stereo hints (visionOS per-eye rendering; no-ops in mono, see docs/visionos-stereo-design.md).
+static Vec3f sStereoFocus;
+static bool sStereoFocusSet = false;
+
+// The next func_800AAA9C sends the distance from the eye to `focus` as the zero-disparity distance.
+void View_SetStereoFocus(Vec3f* focus) {
+    sStereoFocus = *focus;
+    sStereoFocusSet = true;
+}
+
+// The next perspective applied to the OPA/XLU buffers is interface (logos, menus), not world.
+void View_SetStereoInterface(View* view) {
+    OPEN_DISPS(view->gfxCtx);
+    gSPStereoMode(POLY_OPA_DISP++, G_STEREO_PROJ_HUD);
+    gSPStereoMode(POLY_XLU_DISP++, G_STEREO_PROJ_HUD);
+    CLOSE_DISPS(view->gfxCtx);
+}
+
 s32 func_800AAA9C(View* view) {
     f32 aspect;
     s32 width;
@@ -446,6 +464,16 @@ s32 func_800AAA9C(View* view) {
 
     View_StepDistortion(view, projection);
 
+    if (sStereoFocusSet) {
+        f32 focusDist = sqrtf(sqr(view->eye.x - sStereoFocus.x) + sqr(view->eye.y - sStereoFocus.y) +
+                              sqr(view->eye.z - sStereoFocus.z));
+        bool cut = dont_interpolate && R_PAUSE_MENU_MODE == 0;
+
+        gSPStereoConvergence(POLY_OPA_DISP++, focusDist, cut);
+        gSPStereoConvergence(POLY_XLU_DISP++, focusDist, cut);
+        sStereoFocusSet = false;
+    }
+
     gSPPerspNormalize(POLY_OPA_DISP++, view->normal);
     gSPMatrix(POLY_OPA_DISP++, projection, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gSPPerspNormalize(POLY_XLU_DISP++, view->normal);
@@ -602,6 +630,7 @@ s32 func_800AB560(View* view) {
     view->projection = *projection;
 
     gSPPerspNormalize(OVERLAY_DISP++, view->normal);
+    gSPStereoMode(OVERLAY_DISP++, G_STEREO_PROJ_HUD);
     gSPMatrix(OVERLAY_DISP++, projection, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 
     viewing = Graph_Alloc(gfxCtx, sizeof(Mtx));

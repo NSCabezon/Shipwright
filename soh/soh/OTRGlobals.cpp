@@ -603,7 +603,18 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
             case ES_EXTRACT_ARGS: {
 #if !defined(__SWITCH__) && !defined(__WIIU__)
                 if (args.empty()) {
-#ifdef __IOS__
+#if defined(__VISIONOS__)
+                    // Gamepad-only first run: go straight to the game once an archive exists.
+                    if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/oot.o2r") ||
+                        std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/oot-mq.o2r")) {
+                        extractStep = ES_VERIFY;
+                    } else {
+                        // Nothing usable was extracted: ask for a ROM (Rescan) instead of retrying in a loop.
+                        extractStep = ES_EXTRACT;
+                        promptStep = PS_FIRST;
+                    }
+                    continue;
+#elif defined(__IOS__)
                     SohGui::RegisterPopup(
                         "Run Ship of Harkinian", "All files have been processed.", "Run Ship of Harkinian", "",
                         [&]() {
@@ -1098,14 +1109,24 @@ bool OTRGlobals::HasOriginal() {
 }
 
 uint32_t OTRGlobals::GetInterpolationFPS() {
+    uint32_t fps;
     if (CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), 0)) {
-        return Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate();
+        fps = Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate();
     } else if (CVarGetInteger(CVAR_VSYNC_ENABLED, 1) ||
                !Ship::Context::GetRawInstance()->GetWindow()->CanDisableVerticalSync()) {
-        return std::min<uint32_t>(Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate(),
-                                  CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 20));
+        fps = std::min<uint32_t>(Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate(),
+                                 CVarGetInteger(CVAR_SETTING("InterpolationFPS"), SOH_DEFAULT_INTERPOLATION_FPS));
+    } else {
+        fps = CVarGetInteger(CVAR_SETTING("InterpolationFPS"), SOH_DEFAULT_INTERPOLATION_FPS);
     }
-    return CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 20);
+#ifdef __VISIONOS__
+    // Frames are paced on the 90 Hz display clock: above the original 20 fps use a
+    // divisor of 90 (90, 45 or 30; never 60) so every frame lands on whole display ticks.
+    if (fps > 20) {
+        fps = fps >= 68 ? 90 : (fps >= 38 ? 45 : 30);
+    }
+#endif
+    return fps;
 }
 
 extern "C" void OTRMessage_Init();

@@ -1324,6 +1324,8 @@ void Environment_DrawSunAndMoon(PlayState* play) {
     }
 
     if (gSaveContext.entranceIndex != ENTR_HYRULE_FIELD_PAST_BRIDGE_SPAWN || ((void)0, gSaveContext.sceneLayer) != 5) {
+        // Stereo: the sun and moon follow the camera like the skybox; draw them at infinity.
+        gSPStereoMode(POLY_OPA_DISP++, G_STEREO_SKY_BEGIN);
         Matrix_Translate(play->view.eye.x + play->envCtx.sunPos.x, play->view.eye.y + play->envCtx.sunPos.y,
                          play->view.eye.z + play->envCtx.sunPos.z, MTXMODE_NEW);
 
@@ -1403,6 +1405,7 @@ void Environment_DrawSunAndMoon(PlayState* play) {
             }
             gSPDisplayList(POLY_OPA_DISP++, gMoonDL);
         }
+        gSPStereoMode(POLY_OPA_DISP++, G_STEREO_SKY_END);
     }
 
     CLOSE_DISPS(play->state.gfxCtx);

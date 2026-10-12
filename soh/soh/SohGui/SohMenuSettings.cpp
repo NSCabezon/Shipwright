@@ -382,7 +382,7 @@ void SohMenu::AddMenuSettings() {
                 .Max(8)
                 .DefaultValue(1));
 #endif
-    auto fps = CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 20);
+    auto fps = CVarGetInteger(CVAR_SETTING("InterpolationFPS"), SOH_DEFAULT_INTERPOLATION_FPS);
     const char* fpsFormat = fps == 20 ? "Original (%d)" : "%d";
     AddWidget(path, "Current FPS", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_SETTING("InterpolationFPS"))
@@ -390,7 +390,7 @@ void SohMenu::AddMenuSettings() {
         .Callback([](WidgetInfo& info) {
             auto options = std::static_pointer_cast<IntSliderOptions>(info.options);
             int32_t defaultValue = options->defaultValue;
-            if (CVarGetInteger(info.cVar, defaultValue) == defaultValue) {
+            if (CVarGetInteger(info.cVar, defaultValue) == 20) {
                 options->format = "Original (%d)";
             } else {
                 options->format = "%d";
@@ -400,7 +400,12 @@ void SohMenu::AddMenuSettings() {
             if (mSohMenu->disabledMap.at(DISABLE_FOR_MATCH_REFRESH_RATE_ON).active)
                 info.activeDisables.push_back(DISABLE_FOR_MATCH_REFRESH_RATE_ON);
         })
-        .Options(IntSliderOptions().Tooltip(tooltip).Min(20).Max(maxFps).DefaultValue(20).Format(fpsFormat));
+        .Options(IntSliderOptions()
+                     .Tooltip(tooltip)
+                     .Min(20)
+                     .Max(maxFps)
+                     .DefaultValue(SOH_DEFAULT_INTERPOLATION_FPS)
+                     .Format(fpsFormat));
     AddWidget(path, "Match Refresh Rate", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_SETTING("MatchRefreshRate"))
         .RaceDisable(false)

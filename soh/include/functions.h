@@ -1411,6 +1411,8 @@ void View_SetDistortion(View* view, Vec3f orientation, Vec3f scale, f32 speed);
 s32 View_StepDistortion(View* view, Mtx* projectionMtx);
 void func_800AAA50(View* view, s32 arg1);
 s32 func_800AAA9C(View* view);
+void View_SetStereoFocus(Vec3f* focus);
+void View_SetStereoInterface(View* view);
 s32 func_800AB0A8(View* view);
 s32 func_800AB2C4(View* view);
 s32 func_800AB560(View* view);

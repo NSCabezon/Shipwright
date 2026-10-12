@@ -1388,6 +1388,13 @@ void Play_Draw(PlayState* play) {
         POLY_XLU_DISP = Play_SetFog(play, POLY_XLU_DISP);
 
         func_800AA460(&play->view, play->view.fovy, play->view.zNear, play->lightCtx.fogFar);
+        // Stereo: zero disparity at the player, or at what the camera looks at in cutscenes.
+        if (GET_PLAYER(play) != NULL && play->csCtx.state == CS_STATE_IDLE &&
+            gSaveContext.gameMode == GAMEMODE_NORMAL) {
+            View_SetStereoFocus(&GET_PLAYER(play)->actor.focus.pos);
+        } else {
+            View_SetStereoFocus(&play->view.lookAt);
+        }
         func_800AAA50(&play->view, 15);
 
         // Flip the projections and invert culling for the OPA and XLU display buffers
