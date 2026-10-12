@@ -1,7 +1,7 @@
 [submodule "libultraship"]
 	path = libultraship
 	url = https://github.com/NSCabezon/libultraship.git
-	branch = visionos
+	branch = main
 [submodule "ZAPDTR"]
 	path = ZAPDTR
 	url = https://github.com/chrissotraidis/ZAPDTR.git
