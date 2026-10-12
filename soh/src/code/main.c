@@ -74,12 +74,16 @@ int main(int argc, char* argv[]) {
 }
 
 #ifdef __VISIONOS__
+#include <SDL_hints.h>
 extern void SDL_SetMainReady(void);
 
 // Entry point for the visionOS host app, which owns main() and runs this on a
 // dedicated game thread. There is no SDL2main, so mark SDL as ready first.
 int SoHEngine_Main(int argc, char** argv) {
     SDL_SetMainReady();
+    // The system owns the process lifetime: SDL must not turn SIGTERM into SDL_QUIT,
+    // which would make the game thread call exit() while the UI thread is still running.
+    SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
     return SDL_main(argc, argv);
 }
 #endif
