@@ -136,12 +136,17 @@ const float imguiScaleOptionToValue[4] = { 0.75f, 1.0f, 1.5f, 2.0f };
 
 #ifdef __IOS__
 static bool IsIOSCompactDisplay() {
+#ifdef __VISIONOS__
+    // No SDL video on visionOS; the host window is never a compact display.
+    return false;
+#else
     SDL_Rect displayBounds = {};
     if (SDL_GetDisplayUsableBounds(0, &displayBounds) != 0) {
         return false;
     }
     const int shortestSide = displayBounds.w < displayBounds.h ? displayBounds.w : displayBounds.h;
     return shortestSide < 600;
+#endif
 }
 #endif
 
