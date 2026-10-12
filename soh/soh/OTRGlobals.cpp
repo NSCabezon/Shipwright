@@ -676,7 +676,10 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                             std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
 
                         if (!ootO2RExists) {
-#ifdef __IOS__
+#if defined(__VISIONOS__)
+                            // Gamepad-only first run: look for a ROM in Documents straight away.
+                            promptStep = PS_LOCAL;
+#elif defined(__IOS__)
                             SohGui::RegisterPopup(
                                 "No O2R Files",
                                 "No O2R files found. Import a supported ROM with Files to generate one.", "Continue",
@@ -698,6 +701,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         extract.SetSearchPath(dataPath);
                         extract.GetRoms(args);
                         if (!args.empty()) {
+#ifdef __VISIONOS__
+                            // The ROM was put in Documents on purpose; process it without asking.
+                            extractStep = ES_EXTRACT_ARGS;
+                            continue;
+#endif
                             promptStep = PS_WAIT;
                             SohGui::RegisterPopup(
                                 "ROMs found", "ROMs found in application directory. Would you like to process them?",
